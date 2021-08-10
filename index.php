@@ -28,22 +28,33 @@ if($_SERVER["REQUEST_METHOD"] == "GET"){
 
 } else if($_SERVER["REQUEST_METHOD"] == "POST"){
     $url_name = "";
+    $success = null;
     if(!isset($_POST["generateName"]) && !empty($_POST["custom_url"])){
         $url_name = $_POST["custom_url"];
     } else {
         $url_name = generateRandomString();
     }
 
+    if(!isset($_POST["data"]) || empty($_POST["data"])){
+        $success = false;
+    }
+
     $edit_token = generateRandomString(10);
 
-    $stmt = $conn->prepare("INSERT INTO `records`(`url`, `type`, `text`, `edit_token`) VALUES (?,?,?,?)");
-    $stmt->bind_param("ssss", $url_name, $_POST["data_type"], $_POST["data"], $edit_token);
-    $success = null;
-    if(!$stmt->execute()){
-        $success = false;
+    if($success === null){
+        $stmt = $conn->prepare("INSERT INTO `records`(`url`, `type`, `text`, `edit_token`) VALUES (?,?,?,?)");
+        $stmt->bind_param("ssss", $url_name, $_POST["data_type"], $_POST["data"], $edit_token);
+    }
+    if($success === null){
+        if(!$stmt->execute()){
+            $success = false;
+        } else {
+            $success = true;
+            unset($_POST);
+        }
     } else {
-        $success = true;
-        unset($_POST);
+        $success = false;
+
     }
 
 
@@ -64,6 +75,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET"){
             color: white;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 <div class="d-flex justify-content-center mt-3">
@@ -112,9 +124,11 @@ echo $form;
     <p>Sikeresen létrehoztad a linket!</p>
     <p>A linked: <a href="https://url.ruzger.hu/{$url_name}">https://url.ruzger.hu/{$url_name}</a></p>
     <p>A szerkesztő kulcsod: {$edit_token}</p>
-    <p>A szerkesztő gyorslinked: <a href="https://url.ruzger.hu/edit.php?key={$edit_token}">https://url.ruzger.hu/edit.php?key={$edit_token}</a></p>
+    <p>A szerkesztő gyorslinked: <a href="https://url.ruzger.hu/edit.php?key={$edit_token}&url={$url_name}">https://url.ruzger.hu/edit.php?key={$edit_token}&url={$url_name}</a></p>
   </div>
 </div>
+<br>
+<div id="qrcode" class="d-flex justify-content-center mt-3"></div>
 </div>
 HTML;
 
@@ -131,12 +145,14 @@ HTML;
         if($_SERVER["REQUEST_METHOD"] == "POST"){
             if($success){
                 echo $success_output;
+                echo "<script type=\"text/javascript\">new QRCode(document.getElementById(\"qrcode\"), \"https://url.ruzger.hu/" . $url_name. "\");</script>";
             } else {
                 echo $failed_output;
             }
         }
 
         ?>
+
     </div>
 </div>
 
@@ -151,6 +167,7 @@ HTML;
             document.getElementById("custom_url").disabled = false;
         }
     })
+
 </script>
 </body>
 </html>
